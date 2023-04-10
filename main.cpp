@@ -144,24 +144,24 @@ class NodeMap:public vector<HeadNode*>{
             // Iscolito:预热dijstra临近点集
             for (map<int,Node*>::iterator it=(*this)[start]->NodeList.begin();it!=(*this)[start]->NodeList.end();it++){
                 nodelist.push_back(new dijNode(it->second->weight,vector<int>(),it->second->nodeId));
-                nodemap[it->first]=nodemap.size()-1;
-                nodelist[nodemap.size()-1]->route.push_back(it->first);
+                nodemap[it->first]=nodelist.size()-1;
+                nodelist[nodelist.size()-1]->route.push_back(it->first);
             }
             // Iscolito:此处调用各种类型较多, 但是本质上是利用栈的特性进行的扩点/更新点处理
             // Iscolito:从栈底开始遍历全栈,由于nodemap的扩增,实际上一次for循环即可更新所有点
             for(int i=0;i<nodelist.size();i++){
                 HeadNode* kidList=(*this)[nodelist[i]->nodeId];
-                for(int j=0;kidList->NodeList.size();j++){
-                    if(nodemap.find(kidList->NodeList[j]->nodeId)==nodemap.end()){
-                        nodelist.push_back(new dijNode(nodelist[i]->length+kidList->NodeList[j]->weight,nodelist[i]->route,kidList->NodeList[j]->nodeId));
-                        nodelist[nodemap.size()-1]->route.push_back(kidList->NodeList[j]->nodeId);
-                        nodemap[kidList->NodeList[j]->nodeId]=nodemap.size()-1;
+                for(map<int,Node*>::iterator it=kidList->NodeList.begin();it!=kidList->NodeList.end();it++){
+                    if(nodemap.find(it->first)==nodemap.end()){
+                        nodelist.push_back(new dijNode(nodelist[i]->length+it->second->weight,nodelist[i]->route,it->first));
+                        nodelist[nodelist.size()-1]->route.push_back(it->first);
+                        nodemap[it->first]=nodelist.size()-1;
                     }
                     else{
-                        if(nodelist[i]->length+kidList->NodeList[j]->weight<nodelist[nodemap[kidList->NodeList[j]->nodeId]]->length){
-                            nodelist[nodemap[kidList->NodeList[j]->nodeId]]->length=nodelist[i]->length+kidList->NodeList[j]->weight;
-                            nodelist[nodemap[kidList->NodeList[j]->nodeId]]->route=nodelist[i]->route;
-                            nodelist[nodemap[kidList->NodeList[j]->nodeId]]->route.push_back(kidList->NodeList[j]->nodeId);
+                        if(nodelist[i]->length+it->second->weight<nodelist[nodemap[it->second->nodeId]]->length){
+                            nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->weight;
+                            nodelist[nodemap[it->first]]->route=nodelist[i]->route;
+                            nodelist[nodemap[it->first]]->route.push_back(it->first);
                         }
                     }
                 }
