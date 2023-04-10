@@ -49,10 +49,28 @@ class dijNode{
         int nodeId;
         vector<int> route;
         int length;
-        dijNode(int length,vector<int> route,int node){
+        unsigned long long highPipe;
+        unsigned long long lowPipe;
+        // Iscolito:dijstra算法的预热节点
+        dijNode(int length,vector<int> route,int node,int pipeNum){
             this->length=length;
             this->route=route;
             this->nodeId=node;
+            // Iscolito:此处将任务的管道可选项都初始化为1
+            if(pipeNum<=40){
+                this->lowPipe=((long)1<<pipeNum)-1;
+            }
+            else{
+                this->lowPipe=((long)1<<40)-1;
+                this->highPipe=((long)1<<pipeNum)-1;
+            }
+        }
+        dijNode(int length,vector<int> route,int node,unsigned long long highPipe,unsigned long long lowPipe){
+            this->length=length;
+            this->route=route;
+            this->nodeId=node;
+            this->highPipe=highPipe;
+            this->lowPipe=lowPipe;
         }
 };
 
@@ -143,25 +161,33 @@ class NodeMap:public vector<HeadNode*>{
             vector<dijNode*> nodelist;
             // Iscolito:预热dijstra临近点集
             for (map<int,Node*>::iterator it=(*this)[start]->NodeList.begin();it!=(*this)[start]->NodeList.end();it++){
-                nodelist.push_back(new dijNode(it->second->weight,vector<int>(),it->second->nodeId));
-                nodemap[it->first]=nodelist.size()-1;
-                nodelist[nodelist.size()-1]->route.push_back(it->first);
+                if(it->second->highMap|it->second->lowMap){
+                    nodelist.push_back(new dijNode(it->second->weight,vector<int>(),it->second->nodeId,this->pipeNum));
+                    nodemap[it->first]=nodelist.size()-1;
+                    nodelist[nodelist.size()-1]->route.push_back(it->first);
+                    nodelist[nodelist.size()-1]->highPipe&=it->second->highMap;
+                    nodelist[nodelist.size()-1]->lowPipe&=it->second->lowMap;
+                }
             }
             // Iscolito:此处调用各种类型较多, 但是本质上是利用栈的特性进行的扩点/更新点处理
             // Iscolito:从栈底开始遍历全栈,由于nodemap的扩增,实际上一次for循环即可更新所有点
             for(int i=0;i<nodelist.size();i++){
                 HeadNode* kidList=(*this)[nodelist[i]->nodeId];
                 for(map<int,Node*>::iterator it=kidList->NodeList.begin();it!=kidList->NodeList.end();it++){
-                    if(nodemap.find(it->first)==nodemap.end()){
-                        nodelist.push_back(new dijNode(nodelist[i]->length+it->second->weight,nodelist[i]->route,it->first));
-                        nodelist[nodelist.size()-1]->route.push_back(it->first);
-                        nodemap[it->first]=nodelist.size()-1;
-                    }
-                    else{
-                        if(nodelist[i]->length+it->second->weight<nodelist[nodemap[it->second->nodeId]]->length){
-                            nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->weight;
-                            nodelist[nodemap[it->first]]->route=nodelist[i]->route;
-                            nodelist[nodemap[it->first]]->route.push_back(it->first);
+                    unsigned long long highmark=it->second->highMap&nodelist[i]->highPipe;
+                    unsigned long long lowmark=it->second->lowMap&nodelist[i]->lowPipe;
+                    if(highmark|lowmark){
+                        if(nodemap.find(it->first)==nodemap.end()){
+                            nodelist.push_back(new dijNode(nodelist[i]->length+it->second->weight,nodelist[i]->route,it->first,highmark,lowmark));
+                            nodelist[nodelist.size()-1]->route.push_back(it->first);
+                            nodemap[it->first]=nodelist.size()-1;
+                        }
+                        else{
+                            if(nodelist[i]->length+it->second->weight<nodelist[nodemap[it->second->nodeId]]->length){
+                                nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->weight;
+                                nodelist[nodemap[it->first]]->route=nodelist[i]->route;
+                                nodelist[nodemap[it->first]]->route.push_back(it->first);
+                            }
                         }
                     }
                 }

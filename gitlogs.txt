@@ -1,0 +1,23 @@
+commit 3ad94612217baa3607bcd934b041fbfae0778451
+Author: 吴玘华 <513319484@qq.com>
+Date:   Mon Apr 10 15:52:59 2023 +0000
+
+    debug
+
+commit 6bf50123e6709ec94480dec34459d441c6b08cdf
+Author: 吴玘华 <513319484@qq.com>
+Date:   Mon Apr 10 15:25:30 2023 +0000
+
+    实现dijstra算法,改进数据结构
+
+commit 2a39ddb90786846074abea2c0105b289d4cee1ee
+Author: 吴玘华 <513319484@qq.com>
+Date:   Tue Apr 4 16:40:12 2023 +0000
+
+    Init IO
+
+commit 9e7d3d51bb76eb424c0080f2ac4603f9ed6e6d1d
+Author: 吴玘华 <513319484@qq.com>
+Date:   Tue Apr 4 15:57:46 2023 +0000
+
+    init
