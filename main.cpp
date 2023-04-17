@@ -1,46 +1,43 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <queue>
 using namespace std;
 
 class Node{
   public:
-    int weight;
     int nodeId;
-    int lineId;
-    Node* next;
-    // Iscolito:希望实现一个查找可用管道开销在O(1)的数据结构,觉得还是位运算比较合适
-    // 低64bit存0-39号管道占用情况,高64位bit存剩下管道的占用情况
-    unsigned long long highMap;
-    unsigned long long lowMap;
-    int pipeNum;
-    // Iscolito:节点id,边权重,边id,id按照输入进行编号,pipes存储了管道的使用情况,未使用是-1
-    Node(int nodeId, int weight,int lineId,int pipeNum) {
+    // Iscolito:值得注意的一点是,按照管道进行分类,边作为管道参数的情况会导致权值难以确定,因此暂且考虑以最小权值作为边权值近似处理
+    priority_queue<pair<int,int>, vector<pair<int, int> >, greater<pair<int, int> > > parallelPath; //Iscolito:存放weight和lineId
+    int pipeNum;//节点管道数
+    int* pipes;
+    // Iscolito:节点id,边权重,边id,id按照输入进行编号,pipes存储了管道的使用情况,未使用时等于管道数
+    Node(int nodeId,int pipeNum) {
         this->nodeId = nodeId;
-        this->weight = weight;
-        this->lineId = lineId;
+        this->parallelPath=priority_queue<pair<int,int>, vector<pair<int, int> >, greater<pair<int, int> > >();
         this->pipeNum=pipeNum;
-        if(pipeNum<=40){
-            this->lowMap=((long)1<<pipeNum)-1;
-        }
-        else{
-            this->lowMap=((long)1<<40)-1;
-            this->highMap=((long)1<<pipeNum)-1;
+        this->pipes=new int[pipeNum];
+        for(int i=0;i<pipeNum;i++){
+            pipes[i]=0;
         }
     }
-    Node(int nodeId, int weight,int lineId,int pipeNum,Node* next) {
-        this->nodeId = nodeId;
-        this->weight = weight;
-        this->lineId = lineId;
-        this->next=next;
-        this->pipeNum=pipeNum;
-        if(pipeNum<=40){
-            this->lowMap=((long)1<<pipeNum)-1;
+    void addParallelPath(int weight,int lineId){
+        this->parallelPath.push(pair<int,int>(weight,lineId));
+        for(int i=0;i<pipeNum;i++){
+            pipes[i]++;
         }
-        else{
-            this->lowMap=((long)1<<40)-1;
-            this->highMap=((long)1<<pipeNum)-1;
+    }
+    pair<unsigned long long,unsigned long long> getBinaryPipes(){
+        pair<unsigned long long,unsigned long long> pipeBinary;
+        for(int i=0;i<pipeNum;i++){
+            if(i<40){
+                pipeBinary.first+=(unsigned long long)1<<i;
+            }
+            else{
+                pipeBinary.second+=(unsigned long long)1<<(i-40);
+            }
         }
+        return pipeBinary;
     }
 };
 
@@ -49,29 +46,28 @@ class dijNode{
         int nodeId;
         vector<int> route;
         int length;
-        unsigned long long highPipe;
-        unsigned long long lowPipe;
+        pair<unsigned long long,unsigned long long> pipes;
         // Iscolito:dijstra算法的预热节点
         dijNode(int length,vector<int> route,int node,int pipeNum){
             this->length=length;
             this->route=route;
             this->nodeId=node;
-            // Iscolito:此处将任务的管道可选项都初始化为1
             if(pipeNum<=40){
-                this->lowPipe=((long)1<<pipeNum)-1;
+                pipes.first=(unsigned long long)(1<<pipeNum)-1;
+                pipes.second=0;
             }
             else{
-                this->lowPipe=((long)1<<40)-1;
-                this->highPipe=((long)1<<pipeNum)-1;
+                pipes.first=(unsigned long long)(1<<pipeNum)-1;
+                pipes.second=(unsigned long long)(1<<(pipeNum-40))-1;
             }
         }
-        dijNode(int length,vector<int> route,int node,unsigned long long highPipe,unsigned long long lowPipe){
+        dijNode(int length,vector<int> route,int node,pair<unsigned long long,unsigned long long> pipes){
             this->length=length;
             this->route=route;
             this->nodeId=node;
-            this->highPipe=highPipe;
-            this->lowPipe=lowPipe;
+            this->pipes=pipes;
         }
+        
 };
 
 class Task {
@@ -100,24 +96,17 @@ class HeadNode {
   private:
     // Iscolito:头节点类,维护一个最小长度哈希表，减少增加边时的查找开销
     int nodeId;
-    map<int,int> minWeight;
 
   public:
     HeadNode(int nodeId) { this->nodeId = nodeId; }
     void addNode(int nodeId,int weight,int lineId,int pipeNum){
-        if(this->NodeList.find(nodeId)==this->NodeList.end()){
-            this->NodeList[nodeId]=new Node(nodeId, weight,lineId,pipeNum);
+        if(NodeList.find(nodeId)==NodeList.end()){
+            NodeList[nodeId]=new Node(nodeId,pipeNum);
         }
-        else{
-            Node* ptr=this->NodeList[nodeId];
-            while(ptr->next!=nullptr&&ptr->next->weight<weight){
-                ptr=ptr->next;
-            }
-            ptr->next=new Node(nodeId, weight,lineId,pipeNum,ptr->next);
-        }
+        NodeList[nodeId]->addParallelPath(weight, lineId);
     }
     int getMinWeight(int nodeId){
-        return this->NodeList[nodeId]->weight;
+        return this->NodeList[nodeId]->parallelPath.top().first;
     }
     vector<int> getNodeIdList(){
         vector<int> res;
@@ -161,12 +150,12 @@ class NodeMap:public vector<HeadNode*>{
             vector<dijNode*> nodelist;
             // Iscolito:预热dijstra临近点集
             for (map<int,Node*>::iterator it=(*this)[start]->NodeList.begin();it!=(*this)[start]->NodeList.end();it++){
-                if(it->second->highMap|it->second->lowMap){
-                    nodelist.push_back(new dijNode(it->second->weight,vector<int>(),it->second->nodeId,this->pipeNum));
+                //判断start到it有无可用通道
+                pair<unsigned long long,unsigned long long> pipes=it->second->getBinaryPipes();
+                if(pipes.first|pipes.second){
+                    nodelist.push_back(new dijNode(it->second->parallelPath.top().first,vector<int>(),it->second->nodeId,this->pipeNum));
                     nodemap[it->first]=nodelist.size()-1;
                     nodelist[nodelist.size()-1]->route.push_back(it->first);
-                    nodelist[nodelist.size()-1]->highPipe&=it->second->highMap;
-                    nodelist[nodelist.size()-1]->lowPipe&=it->second->lowMap;
                 }
             }
             // Iscolito:此处调用各种类型较多, 但是本质上是利用栈的特性进行的扩点/更新点处理
@@ -174,17 +163,19 @@ class NodeMap:public vector<HeadNode*>{
             for(int i=0;i<nodelist.size();i++){
                 HeadNode* kidList=(*this)[nodelist[i]->nodeId];
                 for(map<int,Node*>::iterator it=kidList->NodeList.begin();it!=kidList->NodeList.end();it++){
-                    unsigned long long highmark=it->second->highMap&nodelist[i]->highPipe;
-                    unsigned long long lowmark=it->second->lowMap&nodelist[i]->lowPipe;
-                    if(highmark|lowmark){
+                    pair<unsigned long long,unsigned long long> pipes=it->second->getBinaryPipes();
+                    pair<unsigned long long,unsigned long long> dijPipes=nodelist[i]->pipes;
+                    dijPipes.first&=pipes.first;
+                    dijPipes.second&=pipes.second;
+                    if(dijPipes.first|dijPipes.second){
                         if(nodemap.find(it->first)==nodemap.end()){
-                            nodelist.push_back(new dijNode(nodelist[i]->length+it->second->weight,nodelist[i]->route,it->first,highmark,lowmark));
+                            nodelist.push_back(new dijNode(nodelist[i]->length+it->second->parallelPath.top().first,nodelist[i]->route,it->first,dijPipes));
                             nodelist[nodelist.size()-1]->route.push_back(it->first);
                             nodemap[it->first]=nodelist.size()-1;
                         }
                         else{
-                            if(nodelist[i]->length+it->second->weight<nodelist[nodemap[it->second->nodeId]]->length){
-                                nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->weight;
+                            if(nodelist[i]->length+it->second->parallelPath.top().first<nodelist[nodemap[it->second->nodeId]]->length){
+                                nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->parallelPath.top().first;
                                 nodelist[nodemap[it->first]]->route=nodelist[i]->route;
                                 nodelist[nodemap[it->first]]->route.push_back(it->first);
                             }
@@ -213,7 +204,7 @@ void testData(vector<HeadNode*> HeadNodeList, vector<Task*> TaskList) {
         cout << "-----HeadNode " << i << "--------" << endl;
         for (map<int,Node*>::iterator it=HeadNodeList[i]->NodeList.begin();it!=HeadNodeList[i]->NodeList.end();it++) {
             cout <<"nodeId:"<<it->second->nodeId << ";"
-                 <<"Weight:"<<it->second->weight << ";"
+                 <<"Weight:"<<it->second->parallelPath.top().first << ";"
                  <<"minWeight:"<<HeadNodeList[i]->getMinWeight(it->second->nodeId)<<' ';
         }
         cout << endl;
@@ -256,7 +247,7 @@ int main() {
     testData(HeadNodeList, TaskList);
     pair<vector<int>,int> result=HeadNodeList.FindWayByDijstra(0,6);
     for(int i=0;i<result.first.size();i++){
-        cout<<result.first[i];
+        cout<<result.first[i]<<' ';
     }
     cout<<endl;
     cout<<result.second;
