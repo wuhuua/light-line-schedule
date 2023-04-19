@@ -197,7 +197,7 @@ class NodeMap:public vector<HeadNode*>{
             (*this)[nodeId1]->addNode(nodeId2,(*this)[nodeId1]->getMinWeight(nodeId2),lineCount,this->pipeNum);
             (*this)[nodeId2]->addNode(nodeId1,(*this)[nodeId2]->getMinWeight(nodeId1),lineCount,this->pipeNum);
             // 增边的时候统一使用最小权值
-            lineWeights[lineCount]=(*this)[nodeId1]->getMinWeight(nodeId2),lineCount;
+            lineWeights[lineCount]=(*this)[nodeId1]->getMinWeight(nodeId2);
             lineCount++;
             this->newLines.push_back(pair<int,int>(nodeId1,nodeId2));
         }
@@ -292,6 +292,7 @@ class NodeMap:public vector<HeadNode*>{
                 node->NodeList[backNode]->pipes[pipeNo]--;
             }
         }
+        // 本算法目前未经过验证,可能会导致程序异常退出
         vector<int> bfsAddLine(vector<int> accessNodes,int end){
             // 队列里面存储当前扩边路径和节点
             queue<int>nodeQueue;
@@ -299,10 +300,11 @@ class NodeMap:public vector<HeadNode*>{
             // 预热BFS现有节点
             for(int i=0;i<accessNodes.size();i++){
                 nodeQueue.push(accessNodes[i]);
-                accessMap[accessNodes[i]]=vector<int>(accessNodes[i]);
+                accessMap[accessNodes[i]]=vector<int>();
+                accessMap[accessNodes[i]].push_back(accessNodes[i]);
             }
             // 增边时则不考虑管道的通达性
-            while(accessNodes.size()!=0&&accessMap.find(end)==accessMap.end()){
+            while(nodeQueue.size()!=0&&accessMap.find(end)==accessMap.end()){
                 int extendNode=nodeQueue.front();
                 nodeQueue.pop();
                 for(map<int,Node*>::iterator it=(*this)[extendNode]->NodeList.begin();it!=(*this)[extendNode]->NodeList.end();it++){
@@ -334,8 +336,8 @@ class NodeMap:public vector<HeadNode*>{
             if(route.size()!=0){
                 for(int i=0;i<route.size()-1;i++){
                     addLine(route[i],route[i+1]);
-                    return;
                 }
+                return;
             }
         }
         // 打印单条路径日志,更新路径的管道使用情况
@@ -479,24 +481,9 @@ int main() {
         cin >> start >> end;
         TaskList.push_back(new Task(start, end,pipeNum));
     }
-    testData(HeadNodeList, TaskList);
-    /*
-    pair<vector<int>,int> result=HeadNodeList.FindWayByDijstra(0,6);
-    for(int i=0;i<result.first.size();i++){
-        cout<<result.first[i]<<' ';
-    }
-    */
     vector<pair<int,vector<int> > > result=HeadNodeList.generate(TaskList);
     cout<<endl;
     HeadNodeList.printLogs(result,TaskList);
-    /*
-    for(int i=0;i<result.size();i++){
-        cout<<"管道选择:"<<result[i].first<<" 路径选择:";
-        for(int j=0;j<result[i].second.size();j++){
-            cout<<result[i].second[j]<<' ';
-        }
-        cout<<endl;
-    }
-    */
+
     return 0;
 }
