@@ -105,12 +105,12 @@ class dijNode{
             this->route=route;
             this->nodeId=node;
             if(pipeNum<=40){
-                pipes.first=(unsigned long long)(1<<pipeNum)-1;
+                pipes.first=((unsigned long long)1<<pipeNum)-1;
                 pipes.second=0;
             }
             else{
-                pipes.first=(unsigned long long)(1<<pipeNum)-1;
-                pipes.second=(unsigned long long)(1<<(pipeNum-40))-1;
+                pipes.first=((unsigned long long)1<<40)-1;
+                pipes.second=((unsigned long long)1<<(pipeNum-40))-1;
             }
         }
         dijNode(int length,vector<int> route,int node,pair<unsigned long long,unsigned long long> pipes){
@@ -132,12 +132,12 @@ class Task {
         this->end = end;
         // Iscolito:此处将任务的管道可选项都初始化为1
         if(pipeNum<=40){
-            pipes.first=(unsigned long long)(1<<pipeNum)-1;
+            pipes.first=((unsigned long long)1<<pipeNum)-1;
             pipes.second=0;
         }
         else{
-            pipes.first=(unsigned long long)(1<<pipeNum)-1;
-            pipes.second=(unsigned long long)(1<<(pipeNum-40))-1;
+            pipes.first=((unsigned long long)1<<40)-1;
+            pipes.second=((unsigned long long)1<<(pipeNum-40))-1;
         }
     }
 };
@@ -402,6 +402,9 @@ class NodeMap:public vector<HeadNode*>{
                 }
             }
             for(int i=0;i<results.size();i++){
+                if(i==26){
+                    if(i==26){}
+                }
                 LogList log=LogList();
                 log.LineIdList=printRouteLogs(results[i].first, TaskList[i]->start, results[i].second,linePipes);
                 log.nodeList=results[i].second;
@@ -419,8 +422,8 @@ class NodeMap:public vector<HeadNode*>{
             pair<vector<int>,int> route;
             vector<pair<int,vector<int> > > results;
             for(int i=0;i<TaskList.size();i++){
-                if(i==15){
-                    if(i==15){}
+                if(i==26){
+                    if(i==26){}
                 }
                 route=FindWayByDijstra(TaskList[i]->start,TaskList[i]->end);
                 //printRoute(route.first);
