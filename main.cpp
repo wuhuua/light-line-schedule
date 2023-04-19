@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <climits>
 using namespace std;
+#define CHECKPOINT 78
 
 void printRoute(vector<int> route);
 
@@ -282,7 +283,7 @@ class NodeMap:public vector<HeadNode*>{
             }
             for(int i=0;i<40;i++){
                 if(pipes.second%2==1){
-                    return i;
+                    return i+40;
                 }
                 pipes.second=pipes.second>>1;
             }
@@ -402,8 +403,8 @@ class NodeMap:public vector<HeadNode*>{
                 }
             }
             for(int i=0;i<results.size();i++){
-                if(i==26){
-                    if(i==26){}
+                if(i==CHECKPOINT){
+                    if(i==CHECKPOINT){}
                 }
                 LogList log=LogList();
                 log.LineIdList=printRouteLogs(results[i].first, TaskList[i]->start, results[i].second,linePipes);
@@ -413,6 +414,7 @@ class NodeMap:public vector<HeadNode*>{
                 log.printLog();
                 //log.printLogIndetail();
                 this->logs.push_back(log);
+                //cout<<" id:"<<i<<endl;
             }
         }
 
@@ -422,8 +424,8 @@ class NodeMap:public vector<HeadNode*>{
             pair<vector<int>,int> route;
             vector<pair<int,vector<int> > > results;
             for(int i=0;i<TaskList.size();i++){
-                if(i==26){
-                    if(i==26){}
+                if(i==CHECKPOINT){
+                    if(i==CHECKPOINT){}
                 }
                 route=FindWayByDijstra(TaskList[i]->start,TaskList[i]->end);
                 //printRoute(route.first);
