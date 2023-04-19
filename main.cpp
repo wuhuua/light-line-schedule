@@ -211,7 +211,7 @@ class NodeMap:public vector<HeadNode*>{
                 //判断start到it有无可用通道
                 pair<unsigned long long,unsigned long long> pipes=it->second->getBinaryPipes();
                 if(pipes.first|pipes.second){
-                    nodelist.push_back(new dijNode(it->second->minWeight,vector<int>(),it->second->nodeId,this->pipeNum));
+                    nodelist.push_back(new dijNode(it->second->minWeight,vector<int>(),it->second->nodeId,pipes));
                     nodemap[it->first]=nodelist.size()-1;
                     nodelist[nodelist.size()-1]->route.push_back(it->first);
                 }
@@ -419,6 +419,9 @@ class NodeMap:public vector<HeadNode*>{
             pair<vector<int>,int> route;
             vector<pair<int,vector<int> > > results;
             for(int i=0;i<TaskList.size();i++){
+                if(i==15){
+                    if(i==15){}
+                }
                 route=FindWayByDijstra(TaskList[i]->start,TaskList[i]->end);
                 //printRoute(route.first);
                 if(route.second!=-1){
