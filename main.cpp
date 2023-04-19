@@ -2,6 +2,8 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <algorithm>
+#include <climits>
 using namespace std;
 
 void printRoute(vector<int> route);
@@ -47,13 +49,15 @@ class Node{
   public:
     int nodeId;
     // Iscolito:值得注意的一点是,按照管道进行分类,边作为管道参数的情况会导致权值难以确定,因此暂且考虑以最小权值作为边权值近似处理
-    priority_queue<pair<int,int>, vector<pair<int, int> >, greater<pair<int, int> > > parallelPath; //Iscolito:存放weight和lineId
+    vector<int> lines;
     int pipeNum;//节点管道数
     vector<int> pipes;
+    int minWeight;
     // Iscolito:节点id,边权重,边id,id按照输入进行编号,pipes存储了管道的使用情况,未使用时等于管道数
     Node(int nodeId,int pipeNum) {
         this->nodeId = nodeId;
-        this->parallelPath=priority_queue<pair<int,int>, vector<pair<int, int> >, greater<pair<int, int> > >();
+        this->minWeight=INT_MAX;
+        this->lines=vector<int>();
         this->pipeNum=pipeNum;
         this->pipes=vector<int>(pipeNum);
         for(int i=0;i<pipeNum;i++){
@@ -61,7 +65,8 @@ class Node{
         }
     }
     void addParallelPath(int weight,int lineId){
-        this->parallelPath.push(pair<int,int>(weight,lineId));
+        lines.push_back(lineId);
+        this->minWeight=this->minWeight<=weight?this->minWeight:weight;
         for(int i=0;i<pipeNum;i++){
             pipes[i]++;
         }
@@ -83,14 +88,8 @@ class Node{
         return pipeBinary;
     }
     // 迭代优先队列到vector中,方便之后使用
-    vector<int> getLineList(){
-        vector<int> lines;
-        priority_queue<pair<int,int>, vector<pair<int, int> >, greater<pair<int, int> > > temp=this->parallelPath;
-        while(temp.size()!=0){
-            lines.push_back(temp.top().second);
-            temp.pop();
-        }
-        return lines;
+    void sortLineList(map<int,int> lineWeights){
+        sort(this->lines.begin(),this->lines.end(),[lineWeights](int a,int b){return lineWeights.at(a)<lineWeights.at(b);});
     }
 };
 
@@ -146,9 +145,7 @@ class Task {
 class HeadNode {
   public:
     map<int,Node*> NodeList;
-
     int nodeId;
-
   public:
     HeadNode(int nodeId) { this->nodeId = nodeId; }
     void addNode(int nodeId,int weight,int lineId,int pipeNum){
@@ -158,7 +155,7 @@ class HeadNode {
         NodeList[nodeId]->addParallelPath(weight, lineId);
     }
     int getMinWeight(int nodeId){
-        return this->NodeList[nodeId]->parallelPath.top().first;
+        return NodeList[nodeId]->minWeight;
     }
     vector<int> getNodeIdList(){
         vector<int> res;
@@ -207,11 +204,14 @@ class NodeMap:public vector<HeadNode*>{
             map<int,int> nodemap;
             vector<dijNode*> nodelist;
             // Iscolito:预热dijstra临近点集
+            // 先将节点自身加入
+            nodelist.push_back(new dijNode(0,vector<int>(),start,this->pipeNum));
+            nodemap[start]=nodelist.size()-1;
             for (map<int,Node*>::iterator it=(*this)[start]->NodeList.begin();it!=(*this)[start]->NodeList.end();it++){
                 //判断start到it有无可用通道
                 pair<unsigned long long,unsigned long long> pipes=it->second->getBinaryPipes();
                 if(pipes.first|pipes.second){
-                    nodelist.push_back(new dijNode(it->second->parallelPath.top().first,vector<int>(),it->second->nodeId,this->pipeNum));
+                    nodelist.push_back(new dijNode(it->second->minWeight,vector<int>(),it->second->nodeId,this->pipeNum));
                     nodemap[it->first]=nodelist.size()-1;
                     nodelist[nodelist.size()-1]->route.push_back(it->first);
                 }
@@ -227,13 +227,13 @@ class NodeMap:public vector<HeadNode*>{
                     dijPipes.second&=pipes.second;
                     if(dijPipes.first|dijPipes.second){
                         if(nodemap.find(it->first)==nodemap.end()){
-                            nodelist.push_back(new dijNode(nodelist[i]->length+it->second->parallelPath.top().first,nodelist[i]->route,it->first,dijPipes));
+                            nodelist.push_back(new dijNode(nodelist[i]->length+it->second->minWeight,nodelist[i]->route,it->first,dijPipes));
                             nodelist[nodelist.size()-1]->route.push_back(it->first);
                             nodemap[it->first]=nodelist.size()-1;
                         }
                         else{
-                            if(nodelist[i]->length+it->second->parallelPath.top().first<nodelist[nodemap[it->second->nodeId]]->length){
-                                nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->parallelPath.top().first;
+                            if(nodelist[i]->length+it->second->minWeight<nodelist[nodemap[it->second->nodeId]]->length){
+                                nodelist[nodemap[it->first]]->length=nodelist[i]->length+it->second->minWeight;
                                 nodelist[nodemap[it->first]]->route=nodelist[i]->route;
                                 nodelist[nodemap[it->first]]->route.push_back(it->first);
                                 nodelist[nodemap[it->first]]->pipes=dijPipes;
@@ -242,9 +242,10 @@ class NodeMap:public vector<HeadNode*>{
                     }
                 }
             }
+            pair<vector<int>,int> res;
             // Iscolito:查找成功返回路径和长度
             if(nodemap.find(end)!=nodemap.end()){
-                return pair<vector<int>,int>(nodelist[nodemap[end]]->route,nodelist[nodemap[end]]->length);
+                res=pair<vector<int>,int>(nodelist[nodemap[end]]->route,nodelist[nodemap[end]]->length);
             }
             // Iscolito:查找失败返回全部可达节点和失败标记-1
             else{
@@ -252,8 +253,14 @@ class NodeMap:public vector<HeadNode*>{
                 for(map<int,int>::iterator it=nodemap.begin();it!=nodemap.end();it++){
                     nodes.push_back(it->first);
                 }
-                return pair<vector<int>,int>(nodes,-1);
+                res=pair<vector<int>,int>(nodes,-1);
             }
+            // 结束之后删除全部的dijnode
+            for(int i=0;i<nodelist.size();i++){
+                delete nodelist[i];
+            }
+            nodelist.clear();
+            return res;
         }
         // 获得可用的管道,如果不成功返回-1
         int getPipe(Task task,vector<int> route){
@@ -292,7 +299,6 @@ class NodeMap:public vector<HeadNode*>{
                 node->NodeList[backNode]->pipes[pipeNo]--;
             }
         }
-        // 本算法目前未经过验证,可能会导致程序异常退出
         vector<int> bfsAddLine(vector<int> accessNodes,int end){
             // 队列里面存储当前扩边路径和节点
             queue<int>nodeQueue;
@@ -344,7 +350,8 @@ class NodeMap:public vector<HeadNode*>{
         vector<int> printRouteLogs(int pipeNo,int start,vector<int> route,map<int,map<int,bool> > &linePipes){
             vector<int> routeLog;
             HeadNode* node=(*this)[start];
-            vector<int> lines=node->NodeList[route[0]]->getLineList();
+            node->NodeList[route[0]]->sortLineList(this->lineWeights);
+            vector<int> lines=node->NodeList[route[0]]->lines;
             for(int i=0;i<lines.size();i++){
                 if(linePipes[lines[i]][pipeNo]){
                     routeLog.push_back(lines[i]);
@@ -354,7 +361,7 @@ class NodeMap:public vector<HeadNode*>{
             }
             for(int i=0;i<route.size()-1;i++){
                 node=(*this)[route[i]];
-                lines=node->NodeList[route[i+1]]->getLineList();
+                lines=node->NodeList[route[i+1]]->lines;
                 for(int j=0;j<lines.size();j++){
                     if(linePipes[lines[j]][pipeNo]){
                         routeLog.push_back(lines[j]);
@@ -437,7 +444,7 @@ void testData(vector<HeadNode*> HeadNodeList, vector<Task*> TaskList) {
         cout << "-----HeadNode " << i << "--------" << endl;
         for (map<int,Node*>::iterator it=HeadNodeList[i]->NodeList.begin();it!=HeadNodeList[i]->NodeList.end();it++) {
             cout <<"nodeId:"<<it->second->nodeId << ";"
-                 <<"Weight:"<<it->second->parallelPath.top().first << ";"
+                 <<"Weight:"<<it->second->minWeight << ";"
                  <<"minWeight:"<<HeadNodeList[i]->getMinWeight(it->second->nodeId)<<' ';
         }
         cout << endl;
