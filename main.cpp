@@ -6,6 +6,43 @@ using namespace std;
 
 void printRoute(vector<int> route);
 
+// 日志类,记录每次路径规划的日志
+class LogList{
+    public:
+        int pipeNum;
+        vector<int>nodeList;
+        vector<int>LineIdList;
+        vector<int>setList;
+    // 标准任务规划打印
+    void printLog(){
+        cout<<this->pipeNum<<' '<<this->LineIdList.size()<<' '<<this->setList.size()<<' ';
+        for(int i=0;i<LineIdList.size();i++){
+            cout<<LineIdList[i]<<' ';
+        }
+        for(int i=0;i<setList.size();i++){
+            cout<<setList[i]<<' ';
+        }
+        cout<<endl;
+    }
+    void printLogIndetail(){
+        cout<<"-------------------------------"<<endl;
+        cout<<"打印管道"<<endl;
+        cout<<pipeNum<<endl;
+        cout<<"打印节点"<<endl;
+        for(int i=0;i<nodeList.size();i++){
+            cout<<nodeList[i]<<' ';
+        }
+        cout<<endl;
+        cout<<"打印路径"<<endl;
+        for(int i=0;i<LineIdList.size();i++){
+            cout<<LineIdList[i]<<' ';
+        }
+        cout<<endl;
+        cout<<"-------------------------------"<<endl;
+    }
+};
+
+
 class Node{
   public:
     int nodeId;
@@ -44,6 +81,16 @@ class Node{
             }
         }
         return pipeBinary;
+    }
+    // 迭代优先队列到vector中,方便之后使用
+    vector<int> getLineList(){
+        vector<int> lines;
+        priority_queue<pair<int,int>, vector<pair<int, int> >, greater<pair<int, int> > > temp=this->parallelPath;
+        while(temp.size()!=0){
+            lines.push_back(temp.top().second);
+            temp.pop();
+        }
+        return lines;
     }
 };
 
@@ -134,15 +181,25 @@ class NodeMap:public vector<HeadNode*>{
     public:
         int lineCount;
         int pipeNum;
-        NodeMap(int lineCount,int pipeNum){
+        int maxDistance;
+        vector<LogList> logs;
+        vector<pair<int,int> > newLines;
+        // 边的权重
+        map<int,int> lineWeights;
+        NodeMap(int lineCount,int pipeNum,int maxDistance){
             this->lineCount=lineCount;
             this->pipeNum=pipeNum;
+            this->maxDistance=maxDistance;
+            this->logs=vector<LogList>();
         }
         // Iscolito:只能在已有边的两个节点添加新的边,此处没有设置检查,用逻辑保证
         void addLine(int nodeId1,int nodeId2){
             (*this)[nodeId1]->addNode(nodeId2,(*this)[nodeId1]->getMinWeight(nodeId2),lineCount,this->pipeNum);
             (*this)[nodeId2]->addNode(nodeId1,(*this)[nodeId2]->getMinWeight(nodeId1),lineCount,this->pipeNum);
+            // 增边的时候统一使用最小权值
+            lineWeights[lineCount]=(*this)[nodeId1]->getMinWeight(nodeId2),lineCount;
             lineCount++;
+            this->newLines.push_back(pair<int,int>(nodeId1,nodeId2));
         }
         // Iscolito:基本dijstra算法,有路走路,没路增边
         pair<vector<int>,int> FindWayByDijstra(int start,int end){
@@ -166,11 +223,6 @@ class NodeMap:public vector<HeadNode*>{
                 for(map<int,Node*>::iterator it=kidList->NodeList.begin();it!=kidList->NodeList.end();it++){
                     pair<unsigned long long,unsigned long long> pipes=it->second->getBinaryPipes();
                     pair<unsigned long long,unsigned long long> dijPipes=nodelist[i]->pipes;
-
-                    if(nodelist[i]->nodeId==1&&it->first==4){
-                        cout<<dijPipes.first<<endl;
-                    }
-
                     dijPipes.first&=pipes.first;
                     dijPipes.second&=pipes.second;
                     if(dijPipes.first|dijPipes.second){
@@ -286,6 +338,72 @@ class NodeMap:public vector<HeadNode*>{
                 }
             }
         }
+        // 打印单条路径日志,更新路径的管道使用情况
+        vector<int> printRouteLogs(int pipeNo,int start,vector<int> route,map<int,map<int,bool> > &linePipes){
+            vector<int> routeLog;
+            HeadNode* node=(*this)[start];
+            vector<int> lines=node->NodeList[route[0]]->getLineList();
+            for(int i=0;i<lines.size();i++){
+                if(linePipes[lines[i]][pipeNo]){
+                    routeLog.push_back(lines[i]);
+                    linePipes[lines[i]][pipeNo]=false;
+                    break;
+                }
+            }
+            for(int i=0;i<route.size()-1;i++){
+                node=(*this)[route[i]];
+                lines=node->NodeList[route[i+1]]->getLineList();
+                for(int j=0;j<lines.size();j++){
+                    if(linePipes[lines[j]][pipeNo]){
+                        routeLog.push_back(lines[j]);
+                        linePipes[lines[j]][pipeNo]=false;
+                        break;
+                    }
+                }
+            }
+            return routeLog;
+        }
+        // 打印放大器日志
+        vector<int> printBooster(int start,vector<int> routeLog,vector<int> route){
+            vector<int> setLog=vector<int>();
+            int distance=0;
+            distance+=this->lineWeights[route[0]];
+            for(int i=0;i<routeLog.size()-1;i++){
+                if(distance+this->lineWeights[route[i+1]]>this->maxDistance){
+                    setLog.push_back(route[i]);
+                    distance=0;
+                }
+                distance+=this->lineWeights[route[i+1]];
+            }
+            return setLog;
+        }
+        // 打印结果的函数
+        void printLogs(vector<pair<int,vector<int> > > results,vector<Task*> TaskList){
+            // 打印增加的边
+            cout<<this->newLines.size()<<endl;
+            for(int i=0;i<this->newLines.size();i++){
+                cout<<this->newLines[i].first<<' '<<this->newLines[i].second<<endl;
+            }
+            // 预热边的管道使用情况
+            map<int,map<int,bool> > linePipes=map<int,map<int,bool> >();
+            for(int i=0;i<this->lineCount;i++){
+                linePipes[i]=map<int,bool>();
+                for(int j=0;j<this->pipeNum;j++){
+                    linePipes[i][j]=true;
+                }
+            }
+            for(int i=0;i<results.size();i++){
+                LogList log=LogList();
+                log.LineIdList=printRouteLogs(results[i].first, TaskList[i]->start, results[i].second,linePipes);
+                log.nodeList=results[i].second;
+                log.pipeNum=results[i].first;
+                log.setList=printBooster(TaskList[i]->start,log.LineIdList,results[i].second);
+                log.printLog();
+                //log.printLogIndetail();
+                this->logs.push_back(log);
+            }
+        }
+
         // 生成一个分配结果
         vector<pair<int,vector<int> > > generate(vector<Task*> TaskList){
             int pipeNo=0;
@@ -293,7 +411,7 @@ class NodeMap:public vector<HeadNode*>{
             vector<pair<int,vector<int> > > results;
             for(int i=0;i<TaskList.size();i++){
                 route=FindWayByDijstra(TaskList[i]->start,TaskList[i]->end);
-                printRoute(route.first);
+                //printRoute(route.first);
                 if(route.second!=-1){
                     // 如果找到了路径,那么getPipe一定会找到一个可用的管道
                     pipeNo=getPipe(*TaskList[i],route.first);
@@ -344,7 +462,7 @@ void printRoute(vector<int> route){
 int main() {
     int nodeNum = 0, lineNum = 0, taskNum = 0, pipeNum = 0, maxDistance = 0;
     cin >> nodeNum >> lineNum >> taskNum >> pipeNum >> maxDistance;
-    NodeMap HeadNodeList(lineNum,pipeNum);
+    NodeMap HeadNodeList(lineNum,pipeNum,maxDistance);
     vector<Task*> TaskList;
     for (int i = 0; i < nodeNum; i++) {
         HeadNodeList.push_back(new HeadNode(i));
@@ -354,6 +472,7 @@ int main() {
         cin >> headID >> nodeID >> weight;
         HeadNodeList[headID]->addNode(nodeID,weight,i,pipeNum);
         HeadNodeList[nodeID]->addNode(headID,weight,i,pipeNum);
+        HeadNodeList.lineWeights[i]=weight;
     }
     int start = 0, end = 0;
     for (int i = 0; i < taskNum; i++) {
@@ -369,6 +488,8 @@ int main() {
     */
     vector<pair<int,vector<int> > > result=HeadNodeList.generate(TaskList);
     cout<<endl;
+    HeadNodeList.printLogs(result,TaskList);
+    /*
     for(int i=0;i<result.size();i++){
         cout<<"管道选择:"<<result[i].first<<" 路径选择:";
         for(int j=0;j<result[i].second.size();j++){
@@ -376,5 +497,6 @@ int main() {
         }
         cout<<endl;
     }
+    */
     return 0;
 }
