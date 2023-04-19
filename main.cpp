@@ -16,11 +16,16 @@ class LogList{
         vector<int>nodeList;
         vector<int>LineIdList;
         vector<int>setList;
-    // 标准任务规划打印
-    void printLog(){
+    // 标准任务规划打印,引入回滚机制
+    void printLog(map<int,int> rollBackLines,int originalLineCount){
         cout<<this->pipeNum<<' '<<this->LineIdList.size()<<' '<<this->setList.size()<<' ';
         for(int i=0;i<LineIdList.size();i++){
-            cout<<LineIdList[i]<<' ';
+            if(LineIdList[i]<originalLineCount){
+                cout<<LineIdList[i]<<' ';
+            }
+            else{
+                cout<<rollBackLines[LineIdList[i]]<<' ';
+            }
         }
         for(int i=0;i<setList.size();i++){
             cout<<setList[i]<<' ';
@@ -178,6 +183,8 @@ class HeadNode {
 class NodeMap:public vector<HeadNode*>{
     public:
         int lineCount;
+        // 存放一开始的边数量,用于之后会滚无用边
+        int originalCount;
         int pipeNum;
         int maxDistance;
         vector<LogList> logs;
@@ -186,6 +193,7 @@ class NodeMap:public vector<HeadNode*>{
         map<int,int> lineWeights;
         NodeMap(int lineCount,int pipeNum,int maxDistance){
             this->lineCount=lineCount;
+            this->originalCount=lineCount;
             this->pipeNum=pipeNum;
             this->maxDistance=maxDistance;
             this->logs=vector<LogList>();
@@ -390,11 +398,6 @@ class NodeMap:public vector<HeadNode*>{
         }
         // 打印结果的函数
         void printLogs(vector<pair<int,vector<int> > > results,vector<Task*> TaskList){
-            // 打印增加的边
-            cout<<this->newLines.size()<<endl;
-            for(int i=0;i<this->newLines.size();i++){
-                cout<<this->newLines[i].first<<' '<<this->newLines[i].second<<endl;
-            }
             // 预热边的管道使用情况
             map<int,map<int,bool> > linePipes=map<int,map<int,bool> >();
             for(int i=0;i<this->lineCount;i++){
@@ -412,11 +415,39 @@ class NodeMap:public vector<HeadNode*>{
                 log.nodeList=results[i].second;
                 log.pipeNum=results[i].first;
                 log.setList=printBooster(TaskList[i]->start,log.LineIdList,results[i].second);
-                log.printLog();
+                //log.printLog();
                 //log.printLogIndetail();
                 this->logs.push_back(log);
                 //cout<<" id:"<<i<<endl;
             }
+            map<int,int> rollBackMap=rollBack(linePipes);
+            // 打印增加的边
+            cout<<rollBackMap.size()<<endl;
+            for(int i=0;i<this->newLines.size();i++){
+                if(rollBackMap.find(i+this->originalCount)!=rollBackMap.end()){
+                    cout<<newLines[i].first<<' '<<newLines[i].second<<endl;
+                }
+            }
+            // 打印光任务调度
+            for(int i=0;i<this->logs.size();i++){
+                logs[i].printLog(rollBackMap,this->originalCount);
+            }
+        }
+        // 回滚机制,回滚掉没有使用过的增边,相应的需要重新分配会滚后剩下的增边的序号,这里直接进行映射
+        map<int,int> rollBack(map<int,map<int,bool> > linePipes){
+            int usedLineCount=this->originalCount;
+            map<int,int> rollBackMap;
+            for(int i=0;i<this->newLines.size();i++){
+                for(int j=0;j<this->pipeNum;j++){
+                    // 根据增边顺序,值得注意的是vector的下标加上起始的边数正好对应边的序号
+                    if(!linePipes[i+this->originalCount][j]){
+                        rollBackMap[i+this->originalCount]=usedLineCount;
+                        usedLineCount++;
+                        break;
+                    }
+                }
+            }
+            return rollBackMap;
         }
 
         // 生成一个分配结果
