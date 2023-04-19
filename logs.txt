@@ -1,0 +1,77 @@
+commit 855e08c9cc8e600e52b432c02deed8c073f513dc
+Author: 吴玘华 <513319484@qq.com>
+Date:   Wed Apr 19 15:42:28 2023 +0000
+
+    修正了高位管道的归零问题
+
+commit 395e83c3db964bad0a4d8676fb7177e038840825
+Author: 吴玘华 <513319484@qq.com>
+Date:   Wed Apr 19 15:28:34 2023 +0000
+
+    更新了高位管道可能出现的问题
+
+commit 315de073974d17caba3607bebf62791897bdc21f
+Author: 吴玘华 <513319484@qq.com>
+Date:   Wed Apr 19 12:33:54 2023 +0000
+
+    修改dijstra算法预热时没有更新管道的问题
+
+commit 6a012a2dc2c60088dc7e92bc79ad41b6d2dfbcdf
+Author: 吴玘华 <513319484@qq.com>
+Date:   Wed Apr 19 11:47:34 2023 +0000
+
+    修复bfs的诸多问题
+
+commit 10b50fa05292cf2e7d970b177d5f861bf4adb73c
+Author: 吴玘华 <513319484@qq.com>
+Date:   Wed Apr 19 06:33:21 2023 +0000
+
+    修复bfs搜索的崩溃问题，但是仍存在超出内存的情况，估计是优先队列造成的
+
+commit a69dd7abfc0778261aa8a60a40b618a7c46fd31d
+Author: 吴玘华 <513319484@qq.com>
+Date:   Wed Apr 19 04:01:27 2023 +0000
+
+    v1.0.1
+
+commit 62e8885378263d0a3571004b671b7e27f36ae1a0
+Author: 吴玘华 <513319484@qq.com>
+Date:   Tue Apr 18 16:54:42 2023 +0000
+
+    最贪心搜索方式实现
+
+commit c9e9891aa17013109ddc29788cb53772cc935cde
+Author: 吴玘华 <513319484@qq.com>
+Date:   Mon Apr 17 02:45:15 2023 +0000
+
+    按照管道描述节点
+
+commit 867880ebba50c17290069f101335f760a404ba4d
+Author: 吴玘华 <513319484@qq.com>
+Date:   Mon Apr 10 16:16:13 2023 +0000
+
+    debug
+
+commit 3ad94612217baa3607bcd934b041fbfae0778451
+Author: 吴玘华 <513319484@qq.com>
+Date:   Mon Apr 10 15:52:59 2023 +0000
+
+    debug
+
+commit 6bf50123e6709ec94480dec34459d441c6b08cdf
+Author: 吴玘华 <513319484@qq.com>
+Date:   Mon Apr 10 15:25:30 2023 +0000
+
+    实现dijstra算法,改进数据结构
+
+commit 2a39ddb90786846074abea2c0105b289d4cee1ee
+Author: 吴玘华 <513319484@qq.com>
+Date:   Tue Apr 4 16:40:12 2023 +0000
+
+    Init IO
+
+commit 9e7d3d51bb76eb424c0080f2ac4603f9ed6e6d1d
+Author: 吴玘华 <513319484@qq.com>
+Date:   Tue Apr 4 15:57:46 2023 +0000
+
+    init

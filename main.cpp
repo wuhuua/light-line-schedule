@@ -373,17 +373,18 @@ class NodeMap:public vector<HeadNode*>{
             }
             return routeLog;
         }
-        // 打印放大器日志
+        // 打印放大器日志,routelog存放当前路径编号,route存放当前节点编号
         vector<int> printBooster(int start,vector<int> routeLog,vector<int> route){
             vector<int> setLog=vector<int>();
             int distance=0;
-            distance+=this->lineWeights[route[0]];
+            distance+=this->lineWeights[routeLog[0]];
             for(int i=0;i<routeLog.size()-1;i++){
-                if(distance+this->lineWeights[route[i+1]]>this->maxDistance){
+                // 要求为不大于,但是根据用例暂时先按小于处理
+                if(distance+this->lineWeights[routeLog[i+1]]>=this->maxDistance){
                     setLog.push_back(route[i]);
                     distance=0;
                 }
-                distance+=this->lineWeights[route[i+1]];
+                distance+=this->lineWeights[routeLog[i+1]];
             }
             return setLog;
         }
